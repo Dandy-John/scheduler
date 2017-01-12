@@ -20,13 +20,21 @@ public class ListenerStep {
 	@XmlElement(name = "index")
 	public int index;
 	
+	@XmlElement(name = "readWriteStep")
+	public List<ReadWriteStep> readWriteSteps;
+	
 	public ListenerStep() {
 		steps = new ArrayList<Step>();
+		readWriteSteps = new ArrayList<ReadWriteStep>();
 		index = 0;
 	}
 	
-	public void add(String thread, String message) {
+	public void addStep(String thread, String message) {
 		steps.add(new Step(thread, message));
+	}
+	
+	public void addReadWriteStep(String threadName, String objectName, String type, String location, String offset) {
+		readWriteSteps.add(new ReadWriteStep(threadName, objectName, type, location, offset));
 	}
 	
 	@Override
@@ -35,7 +43,14 @@ public class ListenerStep {
 		for (int i = 0; i < steps.size(); i++) {
 			result += "\t" + i + " thread:" + steps.get(i).thread + " message:" + steps.get(i).message + "\n";
 		}
+		result += "}\nreadWriteSteps {\n";
+		for (int i = 0; i < readWriteSteps.size(); i++) {
+			ReadWriteStep s = readWriteSteps.get(i);
+			result += "\t" + i + " threadName:" + s.threadName + " objectName:" + s.objectName 
+					+ " type:" + s.type + " location:" + s.location + " offset:" + s.offset + "\n";
+		}
 		result += "}";
+		
 		return result;
 	}
 }
