@@ -1,29 +1,31 @@
 
 public class CheckField {
-	static InstanceExample ex1 = new InstanceExample();
-	static InstanceExample ex2 = new InstanceExample();
-	public static void main(String[] args) {
-		new Thread() {
+	static InstanceExample ex;
+	private int num;
+	public static void main(String[] args) throws InterruptedException {
+		ex = new InstanceExample();
+		Thread t1 = new Thread() {
 			public void run() {
-				ex2.number = 12;
-				ex1.number = 222;
+				ex.number = 12;
+				ex.number = 13;
 			}
-		}.start();
-		ex1.number = 33;
-		ex2.number = 42;
-		ex1.number = 445;
-		
-		/*
-		new Thread(){
+		};
+		Thread t2 = new Thread() {
 			public void run() {
-				System.out.println(ex1.number);
+				int a = ex.number - 12;
+				int b = 5 / a;
+				System.out.println("a=" + a + " b=" + b);
 			}
-		}.start();
-		new Thread(){
-			public void run() {
-				System.out.println(ex1.number);
-			}
-		}.start();
-		*/
+		};
+		t1.start();
+		t2.start();
+	}
+	
+	public int getNum() {
+		return num;
+	}
+	
+	public void setNum(int num) {
+		this.num = num;
 	}
 }
