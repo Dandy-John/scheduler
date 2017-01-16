@@ -12,7 +12,7 @@ import scheduler.listener.FalconImplListener.ReadWriteNode;
 import scheduler.listener.FalconImplListener.SequenceMessage;
 import scheduler.listener._UseForTest;
 
-public class runFalconImpl {
+public class RunFalconImpl {
 	
 	public static void main(String[] args){
 		String[] str = new String[]{
@@ -32,7 +32,9 @@ public class runFalconImpl {
 		_UseForTest.state = ListenerState.RECORD;
 		*/
 		
-		FalconImplListener listener = new FalconImplListener();
+		FalconImplListener listener = new FalconImplListener(new Config(new String[] {
+				"+filter.field=number"
+		}));
 		
 		Config config = new Config(str);
 		//JPF jpf = new JPF(config);
@@ -53,9 +55,11 @@ public class runFalconImpl {
 			jpf.run();
 		}
 		
+		System.out.println("\n---------------------------------------------------------");
+		
 		List<SequenceMessage> sequenceMessages = listener.getDataCollection();
 		for (SequenceMessage sm : sequenceMessages) {
-			sm.RWNodes = sm.RWNodesfilter(null, "num", null, null, null);
+			//sm.RWNodes = sm.RWNodesfilter(null, "num", null, null, null);
 			for (ReadWriteNode node : sm.RWNodes) {
 				System.out.println("element:" + node.element + "\tfield:" + node.field 
 						+ "\ttype:" + node.type + "\tthread:" + node.thread + "\tline:" + node.line);

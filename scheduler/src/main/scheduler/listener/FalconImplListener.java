@@ -3,6 +3,7 @@ package scheduler.listener;
 import java.util.ArrayList;
 import java.util.List;
 
+import gov.nasa.jpf.Config;
 import gov.nasa.jpf.PropertyListenerAdapter;
 import gov.nasa.jpf.search.Search;
 import gov.nasa.jpf.vm.ChoiceGenerator;
@@ -16,6 +17,9 @@ import gov.nasa.jpf.vm.choice.ThreadChoiceFromSet;
 import scheduler.enumerate.ListenerState;
 
 public class FalconImplListener extends PropertyListenerAdapter {
+	
+	private Config conf;
+	
 	//读写相关的instruction节点
 	public class ReadWriteNode {
 		public String element;
@@ -82,10 +86,43 @@ public class FalconImplListener extends PropertyListenerAdapter {
 	//多次运行得到的信息
 	static class DataCollection {
 		public static List<SequenceMessage> sequenceMessages = new ArrayList<SequenceMessage>();
+		
+		public static List<SequenceMessage> getAllPassedSequences() {
+			List<SequenceMessage> result = new ArrayList<SequenceMessage>();
+			for (SequenceMessage sm : sequenceMessages) {
+				if (sm.isSuccess) {
+					result.add(sm);
+				}
+			}
+			return result;
+		}
+		
+		public static List<SequenceMessage> getAllFailedSequences() {
+			List<SequenceMessage> result = new ArrayList<SequenceMessage>();
+			for (SequenceMessage sm : sequenceMessages) {
+				if (!sm.isSuccess) {
+					result.add(sm);
+				}
+			}
+			return result;
+		}
+	}
+	
+	public FalconImplListener(Config conf) {
+		super();
+		this.conf = conf;
 	}
 	
 	public List<SequenceMessage> getDataCollection() {
 		return DataCollection.sequenceMessages;
+	}
+	
+	public List<SequenceMessage> getAllPassedSequences() {
+		return DataCollection.getAllPassedSequences();
+	}
+	
+	public List<SequenceMessage> getAllFailedSequences() {
+		return DataCollection.getAllFailedSequences();
 	}
 	
 	@Override
@@ -106,7 +143,14 @@ public class FalconImplListener extends PropertyListenerAdapter {
 	@Override
 	public void searchFinished(Search search) {
 		SequenceMessage sm = DataCollection.sequenceMessages.get(DataCollection.sequenceMessages.size() - 1);
-		sm.RWNodes = sm.RWNodesfilter(null, "num", null, null, null);
+		
+		String elementFilter = conf.getProperty("filter.element", null);
+		String fieldFilter = conf.getProperty("filter.field", null);
+		String typeFilter = conf.getProperty("filter.type", null);
+		String threadFilter = conf.getProperty("filter.thread", null);
+		String lineFilter = conf.getProperty("filter.line", null);
+		
+		sm.RWNodes = sm.RWNodesfilter(elementFilter, fieldFilter, typeFilter, threadFilter, lineFilter);
 		for (ReadWriteNode node : sm.RWNodes) {
 			System.out.println("element:" + node.element + "\tfield:" + node.field 
 					+ "\ttype:" + node.type + "\tthread:" + node.thread + "\tline:" + node.line);
