@@ -19,10 +19,6 @@ import gov.nasa.jpf.vm.VM;
 import gov.nasa.jpf.vm.bytecode.FieldInstruction;
 import gov.nasa.jpf.vm.choice.ThreadChoiceFromSet;
 import scheduler.enumerate.ListenerState;
-import scheduler.io.XmlTransfer;
-import scheduler.model.ListenerStep;
-import scheduler.model.ReadWriteStep;
-import scheduler.model.Step;
 
 public class _UseForTest extends PropertyListenerAdapter{
 	/*
@@ -94,7 +90,7 @@ public class _UseForTest extends PropertyListenerAdapter{
 	 * ----------------------------------------------------------------------------------------
 	 * ≤‚ ‘¥˙¬Î2
 	 */
-	
+	/*
 	public static Map<String, Integer> priority = new HashMap<String, Integer>();
 	public static ListenerState state;
 	public static List<ReadWriteStep> readWriteSteps = new ArrayList<ReadWriteStep>();
@@ -126,14 +122,14 @@ public class _UseForTest extends PropertyListenerAdapter{
 			reappear(vm, newCG);
 		}
 	}
-	/*
+	
 	@Override
 	public void instructionExecuted(VM vm, ThreadInfo currentThread, Instruction nextInstruction, Instruction executedInstruction) {
 		if (state == ListenerState.RECORD && executedInstruction instanceof FieldInstruction) {
 			sharedVarRecord(currentThread, executedInstruction);
 		}
 	}
-	*/
+	
 	@Override
 	public void instructionExecuted(VM vm, ThreadInfo currentThread, Instruction nextInstruction, Instruction executedInstruction) {
 		ThreadInfo ti = currentThread;
@@ -303,7 +299,7 @@ public class _UseForTest extends PropertyListenerAdapter{
 	private List<ReadWriteStep> filter(List<ReadWriteStep> steps) {
 		List<ReadWriteStep> result = new ArrayList<ReadWriteStep>();
 		for (ReadWriteStep step: steps) {
-			/*
+			
 			int count = 0;
 			for (ReadWriteStep p : steps) {
 				if (!p.threadName.equals(step.threadName) && p.objectName.equals(step.objectName)) {
@@ -314,7 +310,7 @@ public class _UseForTest extends PropertyListenerAdapter{
 			//if (count != 0) {
 				result.add(step);
 			}
-			*/
+			
 			
 			if (step.location.contains("CheckField") || step.location.contains("InstanceExample")) {
 				result.add(step);
@@ -334,7 +330,7 @@ public class _UseForTest extends PropertyListenerAdapter{
 			else if (step.type.contains("PUT")) {
 				str += "Write ";
 			}
-			*/
+			
 			str += step.type;
 			str += "\t";
 			
@@ -353,5 +349,38 @@ public class _UseForTest extends PropertyListenerAdapter{
 	@Override
 	public void propertyViolated(Search search) {
 		System.out.println("property violated.-------------------------------------------------------------");
+	}
+	*/
+	private int oneSlot;
+	//private long twoSlot;
+	
+	@Override
+	public void executeInstruction(VM vm, ThreadInfo currentThread, Instruction instructionToExecute) {
+		if (instructionToExecute instanceof FieldInstruction && !((FieldInstruction) instructionToExecute).isRead()) {
+			FieldInstruction fins = (FieldInstruction)instructionToExecute;
+			FieldInfo fi = fins.getFieldInfo();
+			ElementInfo ei = fins.getElementInfo(currentThread);
+			if (fi.is1SlotField())
+				oneSlot = ei.get1SlotField(fi);
+			//twoSlot = ei.get2SlotField(fi);
+		}
+	}
+	
+	@Override
+	public void instructionExecuted(VM vm, ThreadInfo currentThread, Instruction nextInstruction, Instruction executedInstruction) {
+		if (executedInstruction instanceof FieldInstruction && !((FieldInstruction) executedInstruction).isRead()) {
+			FieldInstruction fins = (FieldInstruction)executedInstruction;
+			FieldInfo fi = fins.getFieldInfo();
+			ElementInfo ei = fins.getElementInfo(currentThread);
+			if (fi.is1SlotField()) {
+				System.out.print(fins.getFileLocation());
+				if (ei.get1SlotField(fi) == oneSlot) {
+					System.out.println("\tnot changed");
+				}
+				else {
+					System.out.println("\tchanged");
+				}
+			}
+		}
 	}
 }

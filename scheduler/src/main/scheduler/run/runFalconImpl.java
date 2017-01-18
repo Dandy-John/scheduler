@@ -8,9 +8,11 @@ import gov.nasa.jpf.listener.PreciseRaceDetector;
 import gov.nasa.jpf.report.ConsolePublisher;
 import scheduler.enumerate.ListenerState;
 import scheduler.listener.FalconImplListener;
-import scheduler.listener.FalconImplListener.ReadWriteNode;
-import scheduler.listener.FalconImplListener.SequenceMessage;
 import scheduler.listener._UseForTest;
+import scheduler.model.DataCollection;
+import scheduler.model.Pattern;
+import scheduler.model.ReadWriteNode;
+import scheduler.model.SequenceMessage;
 
 public class RunFalconImpl {
 	
@@ -33,7 +35,7 @@ public class RunFalconImpl {
 		*/
 		
 		FalconImplListener listener = new FalconImplListener(new Config(new String[] {
-				"+filter.field=number"
+				"+filter.field=num"
 		}));
 		
 		Config config = new Config(str);
@@ -49,7 +51,7 @@ public class RunFalconImpl {
 		
 		//jpf.run();
 		
-		for (int i = 0; i < 50; i++) {
+		for (int i = 0; i < 20; i++) {
 			JPF jpf = new JPF(config);
 			jpf.addPropertyListener(listener);
 			jpf.run();
@@ -57,18 +59,30 @@ public class RunFalconImpl {
 		
 		System.out.println("\n---------------------------------------------------------");
 		
-		List<SequenceMessage> sequenceMessages = listener.getDataCollection();
-		for (SequenceMessage sm : sequenceMessages) {
+		List<SequenceMessage> sequences = listener.getDataCollection();
+		List<SequenceMessage> failedSequences = listener.getAllFailedSequences();
+		List<SequenceMessage> passedSequences = listener.getAllPassedSequences();
+		for (SequenceMessage sm : failedSequences) {
 			//sm.RWNodes = sm.RWNodesfilter(null, "num", null, null, null);
+			sm.removeDeprecatedRWNodes();
 			for (ReadWriteNode node : sm.RWNodes) {
 				System.out.println("element:" + node.element + "\tfield:" + node.field 
-						+ "\ttype:" + node.type + "\tthread:" + node.thread + "\tline:" + node.line);
+						+ "\ttype:" + node.type + "\tthread:" + node.thread + "\tline:" + node.line + "\tchanged:" + node.changed);
 			}
 			String message = "";
 			if (sm.isSuccess == false) {
 				message = sm.errorMessage;
 			}
 			System.out.println("isSuccess:" + sm.isSuccess + "\t" + message);
+		}
+		
+		List<Pattern> patterns = DataCollection.getAllPatterns();
+		System.out.println("Patterns:");
+		for (Pattern pattern : patterns) {
+			System.out.println("pattern:");
+			for (ReadWriteNode node : pattern.nodes) {
+				System.out.println(node.toString());
+			}
 		}
 	}
 }

@@ -15,99 +15,19 @@ import gov.nasa.jpf.vm.VM;
 import gov.nasa.jpf.vm.bytecode.FieldInstruction;
 import gov.nasa.jpf.vm.choice.ThreadChoiceFromSet;
 import scheduler.enumerate.ListenerState;
+import scheduler.model.*;
 
 public class FalconImplListener extends PropertyListenerAdapter {
 	
 	private Config conf;
 	
-	//读写相关的instruction节点
-	public class ReadWriteNode {
-		public String element;
-		public String field;
-		public String type;
-		public String thread;
-		public String line;
-		
-		public ReadWriteNode(String element, String field, String type, String thread, String line) {
-			this.element = element;
-			this.field = field;
-			this.type = type;
-			this.thread = thread;
-			this.line = line;
-		}
-	}
+	private ElementInfo lastElement = null;
+	private ReadWriteNode lastNode = null;
+	private FieldInstruction lastIns = null;
+	private boolean bo;
 	
-	class ChoiceGeneratorNode {
-		public String thread;
-		public String message;
+	private int oneSlot;
 		
-		public ChoiceGeneratorNode(String thread, String message) {
-			this.thread = thread;
-			this.message = message;
-		}
-	}
-	
-	//一次运行得到的信息
-	public class SequenceMessage {
-		public List<ReadWriteNode> RWNodes;
-		public List<ChoiceGeneratorNode> CGNodes;
-		public boolean isSuccess;
-		public String errorMessage;
-		
-		public List<ReadWriteNode> RWNodesfilter(String element, String field, String type, String thread, String line) {
-			List<ReadWriteNode> result = new ArrayList<ReadWriteNode>();
-			for (ReadWriteNode node : RWNodes) {
-				boolean in = true;
-
-				if (element != null && !node.element.contains(element)) {
-					in = false;
-				}
-				else if (field != null && !node.field.contains(field)) {
-					in = false;
-				}
-				else if (type != null && !node.type.equals(type)) {
-					in = false;
-				}
-				else if (thread != null && !node.thread.equals(thread)) {
-					in = false;
-				}
-				else if (line != null && !node.line.contains(line)) {
-					in = false;
-				}
-				
-				if (in) {
-					result.add(node);
-				}
-			}
-			return result;
-		}
-	}
-	
-	//多次运行得到的信息
-	static class DataCollection {
-		public static List<SequenceMessage> sequenceMessages = new ArrayList<SequenceMessage>();
-		
-		public static List<SequenceMessage> getAllPassedSequences() {
-			List<SequenceMessage> result = new ArrayList<SequenceMessage>();
-			for (SequenceMessage sm : sequenceMessages) {
-				if (sm.isSuccess) {
-					result.add(sm);
-				}
-			}
-			return result;
-		}
-		
-		public static List<SequenceMessage> getAllFailedSequences() {
-			List<SequenceMessage> result = new ArrayList<SequenceMessage>();
-			for (SequenceMessage sm : sequenceMessages) {
-				if (!sm.isSuccess) {
-					result.add(sm);
-				}
-			}
-			return result;
-		}
-	}
-	
 	public FalconImplListener(Config conf) {
 		super();
 		this.conf = conf;
@@ -170,6 +90,18 @@ public class FalconImplListener extends PropertyListenerAdapter {
 	}
 	
 	@Override
+	public void executeInstruction(VM vm, ThreadInfo currentThread, Instruction instructionToExecute) {
+		if (instructionToExecute instanceof FieldInstruction && !((FieldInstruction) instructionToExecute).isRead()) {
+			FieldInstruction fins = (FieldInstruction)instructionToExecute;
+			FieldInfo fi = fins.getFieldInfo();
+			ElementInfo ei = fins.getElementInfo(currentThread);
+			if (fi.is1SlotField())
+				oneSlot = ei.get1SlotField(fi);
+			//twoSlot = ei.get2SlotField(fi);
+		}
+	}
+	
+	@Override
 	public void instructionExecuted(VM vm, ThreadInfo currentThread, Instruction nextInstruction, Instruction executedInstruction) {
 		if (executedInstruction instanceof FieldInstruction) {
 			FieldInstruction fins = (FieldInstruction)executedInstruction;
@@ -183,16 +115,38 @@ public class FalconImplListener extends PropertyListenerAdapter {
 			
 			String type = null;
 			String finsClass = fins.getClass().getName();
-			if (finsClass.contains("GET")) {
+			
+			boolean changed = false;
+			if (fins.isRead()) {
 				type = "READ";
 			}
-			else if (finsClass.contains("PUT")) {
+			else {
 				type = "WRITE";
+				if (fi.is1SlotField() && ei.get1SlotField(fi) != oneSlot) {
+					changed = true;
+				}
 			}
 			
-			assert type != null;
-			ReadWriteNode RWNode = new ReadWriteNode(ei.toString(), fi.getName(), type, currentThread.getName(), fins.getFileLocation());
+			ReadWriteNode RWNode = new ReadWriteNode(ei.toString(), fi.getName(), type, currentThread.getName(), fins.getFileLocation(), changed);
 			sm.RWNodes.add(RWNode);
+			
+			if (lastNode != null && lastNode.element.equals(RWNode.element) && lastNode.field.equals(RWNode.field)
+					&& lastNode.type.equals(RWNode.type) && lastNode.thread.equals(RWNode.thread) && lastNode.line.equals(RWNode.line)) {
+				FieldInstruction lastInsn = lastIns; 
+				System.out.println("same with last. " + (fins == lastIns));
+			}
+			
+			lastNode = RWNode;
+			lastElement = ei;
+			lastIns = fins;
+			bo = fins.isReferenceField();
+			if (RWNode.line.contains("ReadWriteMonitor.java"))
+				System.out.println(RWNode.line);
 		}
+	}
+	
+	@Override
+	public void threadScheduled (VM vm, ThreadInfo scheduledThread) {
+		System.out.println("scheduled");
 	}
 }
