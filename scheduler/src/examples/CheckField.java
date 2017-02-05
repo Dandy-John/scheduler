@@ -10,12 +10,13 @@ public class CheckField {
 				ex.num2 = 12;
 				assert ex.number == 12;
 				int c = ex.num2;
-				c -= ex.number;
+				//c -= ex.number;
 			}
 		};
+		t1.setName("123");
 		Thread t2 = new Thread() {
 			public void run() {
-				int a = ex.number;
+				//int a = ex.number;
 				ex.number = 13;
 				ex.num2 = 1;
 			}
